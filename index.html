@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Vision REBA 대시보드</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- HTML2Canvas CDN (사진 저장 기능용) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fade-in 0.5s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-50 font-sans text-slate-800">
+
+    <!-- Navigation -->
+    <nav class="bg-blue-900 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-3">
+                    <i data-lucide="activity" class="h-8 w-8 text-blue-300"></i>
+                    <span class="font-bold text-xl tracking-tight">AI Vision REBA</span>
+                </div>
+                <div class="hidden md:flex space-x-4">
+                    <a href="#" class="px-3 py-2 rounded-md text-sm font-medium bg-blue-800">대시보드</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        
+        <!-- Header Section -->
+        <div class="flex justify-between items-end">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900">근골격계 부담작업 인터랙티브 분석</h1>
+                <p class="text-slate-500 mt-1">작업자 사진을 업로드하고 주요 관절을 지정하면 AI가 각도를 산출하고, REBA 점수표 기반으로 자동 계산합니다.</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Left Column: Process Info & Upload -->
+            <div class="lg:col-span-1 space-y-6">
+                
+                <!-- 공정명 입력란 및 사진저장 버튼 (위치 조정 완료) -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h2 class="text-lg font-semibold mb-4 flex items-center">
+                        <i data-lucide="clipboard-edit" class="h-5 w-5 mr-2 text-slate-500"></i>
+                        공정 정보
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label for="process-name" class="block text-sm font-medium text-slate-700 mb-1">공정명 (작업명)</label>
+                            <input type="text" id="process-name" class="w-full border border-slate-300 rounded-lg p-2 outline-none focus:border-blue-500 transition" placeholder="예: 물류창고 상자 적재">
+                        </div>
+                        
+                        <!-- 분석사진 저장 버튼 (툴바에서 이곳으로 이동 및 디자인 변경) -->
+                        <button id="btn-save-analysis-img" class="w-full px-4 py-2 bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 transition text-sm font-bold flex items-center justify-center shadow-sm rounded-lg">
+                            <i data-lucide="image" class="w-4 h-4 mr-2"></i> REBA 분석사진 저장
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Upload Section -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <!-- 헤더 영역 수정: 초기화/재업로드 버튼이 사진을 가리지 않도록 상단으로 분리 이동 -->
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold flex items-center">
+                            <i data-lucide="camera" class="h-5 w-5 mr-2 text-blue-600"></i>
+                            사진 업로드 및 지정
+                        </h2>
+                        <label id="reupload-btn" class="bg-slate-100 border border-slate-300 text-slate-700 px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer hover:bg-slate-200 shadow-sm transition flex items-center hidden">
+                            <i data-lucide="upload-cloud" class="w-3.5 h-3.5 mr-1.5"></i>
+                            초기화 / 재업로드
+                            <input type="file" id="file-reupload" class="hidden" accept="image/*" />
+                        </label>
+                    </div>
+                    
+                    <!-- 처음 업로드 박스 -->
+                    <label id="upload-box" class="flex flex-col items-center justify-center w-full h-64 border-2 border-slate-300 border-dashed rounded-lg cursor-pointer bg-slate-50 hover:bg-slate-100 transition">
+                        <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                            <i data-lucide="upload-cloud" class="w-12 h-12 text-slate-400 mb-3"></i>
+                            <p class="mb-2 text-sm text-slate-500"><span class="font-semibold text-blue-600">클릭하여 업로드</span> 또는 드래그 앤 드롭</p>
+                            <p class="text-xs text-slate-400">PNG, JPG, JPEG</p>
+                        </div>
+                        <input type="file" id="file-upload" class="hidden" accept="image/*" />
+                    </label>
+
+                    <!-- 이미지 미리보기 박스 (화면 내 방해 요소 모두 제거 완료) -->
+                    <div id="image-preview-container" class="hidden bg-slate-100 flex justify-center items-center w-full min-h-[300px] rounded-lg border border-slate-300 overflow-hidden relative">
+                        <div id="image-preview-box" class="relative group inline-block touch-none max-w-full cursor-crosshair">
+                            <img id="preview-image" src="" alt="Uploaded Task" class="block max-w-full max-h-[600px] object-contain pointer-events-none select-none" draggable="false" crossorigin="anonymous" />
+                            
+                            <!-- 로딩 오버레이 -->
+                            <div id="loading-overlay" class="absolute inset-0 bg-white/50 flex flex-col items-center justify-center hidden z-10 backdrop-blur-sm">
+                                <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                                <p class="mt-4 font-bold text-blue-900 bg-white/90 px-5 py-2 rounded-full shadow-md border border-blue-100">각도 자동 산출 중...</p>
+                            </div>
+                            
+                            <div id="skeleton-overlay" class="absolute inset-0 pointer-events-none hidden">
+                                <svg id="dynamic-svg" style="width: 100%; height: 100%;"></svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 6단계 관절 클릭/드래그 안내 오버레이 -->
+                    <div id="instruction-overlay" class="mt-4 bg-slate-800 text-white py-3.5 px-4 flex items-center justify-center rounded-lg shadow-md hidden transition-all w-full">
+                        <i data-lucide="mouse-pointer-click" id="instruction-icon" class="h-5 w-5 text-red-400 mr-2 animate-bounce"></i>
+                        <p class="font-medium text-[15px] text-center leading-relaxed" id="instruction-text"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Analysis Results -->
+            <div class="lg:col-span-2 space-y-4">
+                
+                <!-- 상단 툴바 (사진 저장 버튼이 빠지고 간결해짐) -->
+                <div class="flex flex-wrap items-center justify-between bg-slate-100 border border-gray-300 p-2 rounded-sm shadow-sm">
+                    <div class="flex items-center space-x-4 text-sm font-medium text-gray-700 mb-2 sm:mb-0">
+                        <div class="flex items-center">
+                            <span class="mr-2 hidden sm:inline">■ 정밀 평가도구 - REBA 적용 여부 :</span>
+                            <label class="flex items-center mr-3 cursor-pointer"><input type="radio" name="reba-apply" class="mr-1" checked> 평가함</label>
+                            <label class="flex items-center cursor-pointer"><input type="radio" name="reba-apply" class="mr-1"> 평가안함</label>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-1.5">
+                        <label class="px-3 py-1.5 bg-white border border-gray-400 text-gray-700 hover:bg-gray-50 transition text-xs font-medium cursor-pointer flex items-center shadow-sm rounded-sm">
+                            <i data-lucide="folder-up" class="w-3.5 h-3.5 mr-1.5 text-green-600"></i> JSON 파일 업로드
+                            <input type="file" id="btn-top-json-upload" accept=".json" class="hidden">
+                        </label>
+                        <button id="btn-top-json-save" class="px-3 py-1.5 bg-white border border-gray-400 text-gray-700 hover:bg-gray-50 transition text-xs font-medium flex items-center shadow-sm rounded-sm">
+                            <i data-lucide="save" class="w-3.5 h-3.5 mr-1.5 text-blue-600"></i> JSON 파일 저장
+                        </button>
+                        <label class="px-3 py-1.5 bg-white border border-gray-400 text-gray-700 hover:bg-gray-50 transition text-xs font-medium cursor-pointer flex items-center shadow-sm rounded-sm">
+                            <i data-lucide="image-plus" class="w-3.5 h-3.5 mr-1.5 text-orange-500"></i> REBA 사진 업로드
+                            <input type="file" id="btn-top-img-upload" accept="image/*" class="hidden">
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 1. 분석 대기 중 화면 -->
+                <div id="waiting-box" class="bg-white rounded-xl shadow-sm border border-slate-200 p-12 h-full flex flex-col items-center justify-center text-center">
+                    <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                        <i data-lucide="activity" class="h-10 w-10 text-slate-300"></i>
+                    </div>
+                    <h3 class="text-xl font-medium text-slate-700">좌표 지정 대기 중</h3>
+                    <p class="text-slate-500 mt-2 max-w-sm">
+                        왼쪽 사진에서 허리, 목, 다리, 상완, 전완, 손목 순서대로 관절을 지정해주시면 AI가 각도를 자동 계산합니다.
+                    </p>
+                </div>
+
+                <!-- 2. AI 분석 중 화면 (로딩) -->
+                <div id="analyzing-box" class="bg-white rounded-xl shadow-sm border border-slate-200 p-12 h-full flex flex-col items-center justify-center text-center hidden">
+                    <div class="animate-pulse flex flex-col items-center">
+                        <i data-lucide="calculator" class="h-12 w-12 text-blue-400 mb-4 animate-bounce"></i>
+                        <h3 class="text-xl font-medium text-slate-700">클릭 좌표 기반 관절 각도 및 점수 연산 중...</h3>
+                        <div class="w-64 h-2 bg-slate-100 rounded-full mt-6 overflow-hidden">
+                            <div class="h-full bg-blue-600 rounded-full animate-[w-full_2s_ease-in-out_infinite]" style="width: 60%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. 분석 결과 폼 화면 -->
+                <div id="results-box" class="hidden animate-fade-in bg-white shadow-sm border border-gray-300 p-3 rounded-sm">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-3 text-[13px] text-gray-800">
+                        
+                        <!-- Left Column -->
+                        <div class="space-y-3">
+                            <!-- Table A -->
+                            <div>
+                                <div class="bg-gray-600 text-yellow-400 font-medium px-2 py-1.5 mb-1 text-sm shadow-sm flex justify-between">
+                                    <span>Table A (허리, 목, 다리)</span>
+                                </div>
+                                <div class="space-y-2 px-1">
+                                    <div class="flex items-start">
+                                        <div class="w-14 pt-1">- 허리</div>
+                                        <div class="flex-1 space-y-1">
+                                            <select id="sel-trunk" class="w-full border border-gray-300 p-1 bg-white outline-none focus:border-blue-500 text-blue-800 font-bold">
+                                                <option value="0">미선택</option>
+                                                <option value="1">0도 바른자세 (1점)</option>
+                                                <option value="2">0~20도 굽힘 (2점)</option>
+                                                <option value="3">20~60도 굽힘 (3점)</option>
+                                                <option value="4">60도 이상 굽힘 (4점)</option>
+                                            </select>
+                                            <label class="flex items-center cursor-pointer">
+                                                <input type="checkbox" id="chk-trunk-twist" class="mr-2 text-blue-600"> 비틀림 또는 옆으로 구부림 (+1)
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-start">
+                                        <div class="w-14 pt-1">- 목</div>
+                                        <div class="flex-1 space-y-1">
+                                            <select id="sel-neck" class="w-full border border-gray-300 p-1 bg-white outline-none focus:border-blue-500 text-blue-800 font-bold">
+                                                <option value="0">미선택</option>
+                                                <option value="1">0~20도 굽힘 (1점)</option>
+                                                <option value="2">20도 이상 굽힘 (2점)</option>
+                                            </select>
+                                            <label class="flex items-center cursor-pointer">
+                                                <input type="checkbox" id="chk-neck-twist" class="mr-2 text-blue-600"> 비틀림 또는 옆으로 구부림 (+1)
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-start">
+                                        <div class="w-14 pt-1">- 다리</div>
+                                        <div class="flex-1 space-y-1">
+                                            <select id="sel-leg" class="w-full border border-gray-300 p-1 bg-white outline-none focus:border-blue-500 text-blue-800 font-bold">
+                                                <option value="0">미선택</option>
+                                                <option value="1">양쪽 다리 지지 (1점)</option>
+                                                <option value="1">앉은 자세 (1점)</option>
+                                                <option value="2">한쪽 다리 지지 / 불안정 (2점)</option>
+                                            </select>
+                                            <label class="flex items-center cursor-pointer">
+                                                <input type="checkbox" id="chk-leg-30" class="mr-2 text-blue-600"> 무릎을 30~60도 굽힘 (+1)
+                                            </label>
+                                            <label class="flex items-center cursor-pointer">
+                                                <input type="checkbox" id="chk-leg-60" class="mr-2 text-blue-600"> 무릎을 60도 이상 굽힘 (+2)
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 무게/손잡이 -->
+                            <div>
+                                <div class="bg-gray-600 text-yellow-400 font-medium px-2 py-1.5 mb-1 text-sm shadow-sm flex justify-between">
+                                    <span>무게(힘) 및 손잡이 형태</span>
+                                    <span class="text-xs text-yellow-200">※ 수기입력</span>
+                                </div>
+                                <div class="space-y-2 px-1">
+                                    <div class="flex items-start">
+                                        <div class="w-14 pt-1">- 무게</div>
+                                        <div class="flex-1 space-y-1">
+                                            <select id="sel-weight" class="w-full border border-gray-300 p-1 bg-white focus:border-blue-500">
+                                                <option value="0">5kg 미만 / 취급안함 (+0)</option>
+                                                <option value="1">5~10kg (+1)</option>
+                                                <option value="2">10kg 이상 (+2)</option>
+                                            </select>
+                                            <label class="flex items-center cursor-pointer">
+                                                <input type="checkbox" id="chk-weight-shock" class="mr-2 text-blue-600"> 충격 또는 갑작스런 힘 (+1)
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <div class="w-14">- 손잡이</div>
+                                        <div class="flex-1">
+                                            <select id="sel-coupling" class="w-full border border-gray-300 p-1 bg-white focus:border-blue-500">
+                                                <option value="0">해당사항 없음 / 좋음 (+0)</option>
+                                                <option value="1">보통 (+1)</option>
+                                                <option value="2">나쁨 (+2)</option>
+                                                <option value="3">매우 나쁨 (+3)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Column -->
+                        <div class="space-y-3">
+                            <!-- Table B -->
+                            <div>
+                                <div class="bg-gray-600 text-yellow-400 font-medium px-2 py-1.5 mb-1 text-sm shadow-sm flex justify-between">
+                                    <span>Table B (상완, 전완, 손목)</span>
+                                </div>
+                                <div class="space-y-2 px-1">
+                                    <div class="flex items-start">
+                                        <div class="w-16 pt-1">- 상완</div>
+                                        <div class="flex-1 space-y-1">
+                                            <select id="sel-ua" class="w-full border border-gray-300 p-1 bg-white outline-none focus:border-blue-500 text-blue-800 font-bold">
+                                                <option value="0">미선택</option>
+                                                <option value="1">0~20도 굽힘 (1점)</option>
+                                                <option value="2">20~45도 굽힘 (2점)</option>
+                                                <option value="3">45~90도 굽힘 (3점)</option>
+                                                <option value="4">90도 이상 굽힘 (4점)</option>
+                                            </select>
+                                            <label class="flex items-center cursor-pointer"><input type="checkbox" id="chk-ua-abduct" class="mr-2 text-blue-600"> 윗팔이 벌어지거나 회전 (+1)</label>
+                                            <label class="flex items-center cursor-pointer"><input type="checkbox" id="chk-ua-shoulder" class="mr-2 text-blue-600"> 어깨 들림 (+1)</label>
+                                            <label class="flex items-center cursor-pointer"><input type="checkbox" id="chk-ua-support" class="mr-2 text-blue-600"> 팔이 지지됨 (-1)</label>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <div class="w-16">- 전완</div>
+                                        <div class="flex-1">
+                                            <select id="sel-la" class="w-full border border-gray-300 p-1 bg-white outline-none focus:border-blue-500 text-blue-800 font-bold">
+                                                <option value="0">미선택</option>
+                                                <option value="1">60~100도 굽힘 (1점)</option>
+                                                <option value="2">60도 미만 또는 100도 이상 (2점)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-start">
+                                        <div class="w-16 pt-1">- 손목</div>
+                                        <div class="flex-1 space-y-1">
+                                            <select id="sel-wrist" class="w-full border border-gray-300 p-1 bg-white outline-none focus:border-blue-500 text-blue-800 font-bold">
+                                                <option value="0">미선택</option>
+                                                <option value="1">15도 미만 굽힘 (1점)</option>
+                                                <option value="2">15도 이상 굽힘 (2점)</option>
+                                            </select>
+                                            <label class="flex items-center cursor-pointer"><input type="checkbox" id="chk-wrist-twist" class="mr-2 text-blue-600"> 옆으로 굽혀지거나 비틀림 (+1)</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 행동점수 -->
+                            <div>
+                                <div class="bg-gray-600 text-yellow-400 font-medium px-2 py-1.5 mb-1 text-sm shadow-sm flex justify-between">
+                                    <span>행동점수 (Activity)</span>
+                                    <span class="text-xs text-yellow-200">※ 수기입력</span>
+                                </div>
+                                <div class="space-y-1 px-1">
+                                    <label class="flex items-center cursor-pointer"><input type="checkbox" id="chk-act-static" class="mr-2 text-blue-600"> 1분이상 정적 자세 (+1)</label>
+                                    <label class="flex items-center cursor-pointer"><input type="checkbox" id="chk-act-repeat" class="mr-2 text-blue-600"> 분당 4회 이상 반복 (+1)</label>
+                                    <label class="flex items-center cursor-pointer"><input type="checkbox" id="chk-act-rapid" class="mr-2 text-blue-600"> 급격한 변화 또는 불안정한 자세 (+1)</label>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Bottom Summary -->
+                    <div class="mt-4 text-[13px] text-gray-800">
+                        <div class="bg-gray-600 text-white font-medium px-2 py-1.5 mb-2 text-sm shadow-sm">REBA 분석 평가 요약 (실시간 자동 계산)</div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 px-1">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-blue-700 font-semibold w-20">- Score A</span>
+                                <input type="text" id="final-score-a" value="평가 불가" class="border border-gray-300 px-2 py-1 w-full bg-slate-50 outline-none text-center" readonly title="Table A 점수 + 무게 점수">
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-blue-700 font-semibold w-20">- Score C</span>
+                                <input type="text" id="final-score-c" value="평가 불가" class="border border-gray-300 px-2 py-1 w-full bg-slate-50 outline-none text-center" readonly title="Score A 와 Score B를 교차시킨 점수">
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-blue-700 font-semibold w-24">- REBA Score</span>
+                                <input type="text" id="final-reba" value="평가 불가" class="border border-gray-300 px-2 py-1 w-full bg-slate-50 outline-none text-center font-bold" readonly>
+                            </div>
+                            
+                            <div class="flex items-center space-x-2">
+                                <span class="text-blue-700 font-semibold w-20">- Score B</span>
+                                <input type="text" id="final-score-b" value="평가 불가" class="border border-gray-300 px-2 py-1 w-full bg-slate-50 outline-none text-center" readonly title="Table B 점수 + 손잡이 점수">
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-blue-700 font-semibold w-20">- 행동점수</span>
+                                <input type="text" id="final-act" value="평가 불가" class="border border-gray-300 px-2 py-1 w-full bg-slate-50 outline-none text-center" readonly>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-blue-700 font-semibold w-24">- 위험수준</span>
+                                <input type="text" id="final-risk" value="평가 불가" class="border border-gray-300 px-2 py-1 w-full bg-slate-50 outline-none text-center" readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 총평 및 개선대책 -->
+                    <div class="mt-5 text-[13px] text-gray-800">
+                        <div class="bg-gray-600 text-yellow-400 font-medium px-2 py-1.5 mb-2 text-sm shadow-sm flex justify-between">
+                            <span>AI 종합 분석 총평 및 개선 대책</span>
+                        </div>
+                        <textarea id="final-review-report" class="w-full h-32 border border-gray-300 p-3 bg-blue-50 text-[13px] leading-relaxed outline-none resize-none rounded-sm focus:border-blue-500" readonly placeholder="사진 업로드 후 6단계 관절 측정을 완료하시면, 부위별 각도 분석과 공학적/관리적 대책이 자동으로 작성됩니다."></textarea>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        lucide.createIcons();
+
+        /* =====================================================================
+           REBA 테이블 및 계산 엔진
+           ===================================================================== */
+        const tableA = [
+            [[1, 2, 3, 4], [1, 2, 3, 4], [3, 3, 5, 6]], // Trunk 1
+            [[2, 3, 4, 5], [3, 4, 5, 6], [4, 5, 6, 7]], // Trunk 2
+            [[2, 4, 5, 6], [4, 5, 6, 7], [5, 6, 7, 8]], // Trunk 3
+            [[3, 5, 6, 7], [5, 6, 7, 8], [6, 7, 8, 9]], // Trunk 4
+            [[4, 6, 7, 8], [6, 7, 8, 9], [7, 8, 9, 9]]  // Trunk 5
+        ];
+
+        const tableB = [
+            [[1, 2, 2], [1, 2, 3]], // Upper Arm 1
+            [[1, 2, 3], [2, 3, 4]], // Upper Arm 2
+            [[3, 4, 5], [4, 5, 5]], // Upper Arm 3
+            [[4, 5, 5], [5, 6, 7]], // Upper Arm 4
+            [[6, 7, 8], [7, 8, 8]], // Upper Arm 5
+            [[7, 8, 8], [8, 9, 9]]  // Upper Arm 6
+        ];
+
+        const tableC = [
+            [1, 1, 1, 2, 3, 3, 4, 5, 6, 7, 7, 7],
+            [1, 2, 2, 3, 4, 4, 5, 6, 6, 7, 7, 8],
+            [2, 3, 3, 3, 4, 5, 6, 7, 7, 8, 8, 8],
+            [3, 4, 4, 4, 5, 6, 7, 8, 8, 9, 9, 9],
+            [4, 4, 4, 5, 6, 7, 8, 8, 9, 9, 9, 9],
+            [6, 6, 6, 7, 8, 8, 9, 9, 10, 10, 10, 10],
+            [7, 7, 7, 8, 9, 9, 9, 10, 10, 11, 11, 11],
+            [8, 8, 8, 9, 10, 10, 10, 10, 10, 11, 11, 11],
+            [9, 9, 9, 10, 10, 10, 11, 11, 11, 12, 12, 12],
+            [10, 10, 10, 11, 11, 11, 11, 12, 12, 12, 12, 12],
+            [11, 11, 11, 11, 12, 12, 12, 12, 12, 12, 12, 12],
+            [12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12]
+        ];
+
+        // 점수 합산 및 화면 적용 함수
+        function calculateReba() {
+            const v = (id) => parseInt(document.getElementById(id).value) || 0;
+            const c = (id) => document.getElementById(id).checked ? 1 : 0;
+            
+            let trunkBase = v('sel-trunk');
+            let neckBase = v('sel-neck');
+            let legBase = v('sel-leg');
+            let uaBase = v('sel-ua');
+            let laBase = v('sel-la');
+            let wristBase = v('sel-wrist');
+
+            if (!trunkBase || !neckBase || !legBase || !uaBase || !laBase || !wristBase) {
+                document.getElementById('final-score-a').value = '평가 불가';
+                document.getElementById('final-score-b').value = '평가 불가';
+                document.getElementById('final-score-c').value = '평가 불가';
+                document.getElementById('final-act').value = '평가 불가';
+                document.getElementById('final-reba').value = '평가 불가';
+                document.getElementById('final-risk').value = '평가 불가';
+                document.getElementById('final-reba').className = 'border border-gray-300 px-2 py-1 w-full bg-slate-50 outline-none text-center font-bold';
+                document.getElementById('final-review-report').value = '';
+                return;
+            }
+
+            /* 1. Table A 점수 및 Score A 계산 */
+            let trunk = Math.max(1, Math.min(5, trunkBase + c('chk-trunk-twist')));
+            let neck = Math.max(1, Math.min(3, neckBase + c('chk-neck-twist')));
+            let legMod = c('chk-leg-30') + (c('chk-leg-60') * 2);
+            let leg = Math.max(1, Math.min(4, legBase + legMod));
+
+            let tableAScore = tableA[trunk - 1][neck - 1][leg - 1];
+            let weight = v('sel-weight') + c('chk-weight-shock');
+            let scoreA = Math.max(1, Math.min(12, tableAScore + weight));
+
+            /* 2. Table B 점수 및 Score B 계산 */
+            let uaMod = c('chk-ua-abduct') + c('chk-ua-shoulder') - c('chk-ua-support');
+            let ua = Math.max(1, Math.min(6, uaBase + uaMod));
+            let la = Math.max(1, Math.min(2, laBase));
+            let wrist = Math.max(1, Math.min(3, wristBase + c('chk-wrist-twist')));
+
+            let tableBScore = tableB[ua - 1][la - 1][wrist - 1];
+            let coupling = v('sel-coupling');
+            let scoreB = Math.max(1, Math.min(12, tableBScore + coupling));
+
+            /* 3. Score C 산출 */
+            let scoreC = tableC[scoreA - 1][scoreB - 1];
+
+            /* 4. 행동점수(Activity) 취합 및 최종 REBA Score 산출 */
+            let act = c('chk-act-static') + c('chk-act-repeat') + c('chk-act-rapid');
+            let finalReba = scoreC + act;
+
+            /* 5. 화면에 계산 결과 출력 */
+            let riskText = '';
+            let rebaClass = 'border px-2 py-1 w-full outline-none text-center font-bold ';
+            
+            if (finalReba <= 1) {
+                riskText = '무시할 수 있음';
+                rebaClass += 'bg-gray-100 text-gray-800 border-gray-400';
+            } else if (finalReba <= 3) {
+                riskText = '낮음 (Low)';
+                rebaClass += 'bg-green-100 text-green-800 border-green-500';
+            } else if (finalReba <= 7) {
+                riskText = '보통 (Medium)';
+                rebaClass += 'bg-yellow-100 text-yellow-800 border-yellow-500';
+            } else if (finalReba <= 10) {
+                riskText = '높음 (High)';
+                rebaClass += 'bg-orange-100 text-orange-800 border-orange-500';
+            } else {
+                riskText = '매우 높음 (Very High)';
+                rebaClass += 'bg-red-100 text-red-800 border-red-500';
+            }
+
+            document.getElementById('final-score-a').value = `${scoreA}`;
+            document.getElementById('final-score-b').value = `${scoreB}`;
+            document.getElementById('final-score-c').value = `${scoreC}`;
+            document.getElementById('final-act').value = `${act}`;
+            document.getElementById('final-reba').value = `${finalReba}`;
+            document.getElementById('final-risk').value = riskText;
+            document.getElementById('final-reba').className = rebaClass;
+
+            /* 6. AI 종합 분석 총평 및 대책 자동 작성 */
+            let reviewText = `[AI 관절 각도 분석 결과]\n`;
+            reviewText += `- 허리: ${window.aiAngles.trunk}도 굽힘 / 목: ${window.aiAngles.neck}도 굽힘 / 다리(무릎): ${window.aiAngles.leg}도 굽힘\n`;
+            reviewText += `- 상완: ${window.aiAngles.upperArm}도 / 전완: ${window.aiAngles.lowerArm}도 / 손목: ${window.aiAngles.wrist}도 꺾임 상태\n\n`;
+
+            reviewText += `[개선 대책]\n`;
+            if (finalReba >= 8) {
+                reviewText += `- 공학적 대책: 중량물 취급 보조설비(호이스트, 리프트, 밸런서 등) 즉각 도입, 작업자 체형에 맞는 높이 조절형 작업대 설치 및 레이아웃 전면 개조 필요.\n`;
+                reviewText += `- 관리적 대책: 즉각적인 근골격계 유해요인 정밀조사 실시, 작업 교대주기 단축 및 추가 휴식시간 배정, 전문적인 인간공학적 작업자세 교육 의무화.`;
+            } else if (finalReba >= 4) {
+                reviewText += `- 공학적 대책: 작업대 및 의자 높이 조절을 통한 허리/목 굽힘 완화, 취급 도구 및 수공구의 그립(손잡이) 형태 인간공학적 개선.\n`;
+                reviewText += `- 관리적 대책: 작업 전/후 스트레칭 및 휴식시간 준수, 작업자 자세 교정 지도, 정기적인 근골격계 통증 설문조사 실시.`;
+            } else {
+                reviewText += `- 공학적 대책: 현재의 양호한 작업 환경 유지 및 보조 도구 주기적 점검.\n`;
+                reviewText += `- 관리적 대책: 근골격계 질환 예방 기본 교육 실시 및 작업 중 자율적인 스트레칭 적극 권장.`;
+            }
+            
+            document.getElementById('final-review-report').value = reviewText;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('#results-box select, #results-box input[type="checkbox"]').forEach(el => {
+                el.addEventListener('change', calculateReba);
+            });
+            calculateReba();
+        });
+
+        /* =====================================================================
+           이미지 인터랙션 (관절 6단계 추적 UI 및 AI 각도 분석기)
+           ===================================================================== */
+        const steps = [
+            { type: 'click', id: 'waist', name: '허리', prompt: '사진에서 <span class="text-red-400 font-bold text-base px-1">허리(Waist)</span>를 클릭하세요. (1/6)', color: '#ef4444' },
+            { type: 'drag', id: 'neck', name: '목', prompt: '<span class="text-orange-400 font-bold text-base px-1">목(Neck)</span>을 클릭한 채로 <span class="text-white underline decoration-orange-400 underline-offset-4">머리 방향으로 드래그</span>하세요. (2/6)', color: '#f97316' },
+            { type: 'drag', id: 'knee', name: '다리', prompt: '<span class="text-blue-400 font-bold text-base px-1">무릎(Knee)</span>을 클릭한 채로 <span class="text-white underline decoration-blue-400 underline-offset-4">발목 방향으로 드래그</span>하세요. (3/6)', color: '#3b82f6' },
+            { type: 'drag', id: 'upperarm', name: '상완', prompt: '<span class="text-emerald-400 font-bold text-base px-1">어깨(상완)</span>를 클릭한 채로 <span class="text-white underline decoration-emerald-400 underline-offset-4">팔꿈치 방향으로 드래그</span>하세요. (4/6)', color: '#10b981' },
+            { type: 'drag', id: 'lowerarm', name: '전완', prompt: '<span class="text-purple-400 font-bold text-base px-1">팔꿈치(전완)</span>를 클릭한 채로 <span class="text-white underline decoration-purple-400 underline-offset-4">손목 방향으로 드래그</span>하세요. (5/6)', color: '#8b5cf6' },
+            { type: 'drag', id: 'wrist', name: '손목', prompt: '<span class="text-pink-400 font-bold text-base px-1">손목(Wrist)</span>을 클릭한 채로 <span class="text-white underline decoration-pink-400 underline-offset-4">손가락 방향으로 드래그</span>하세요. (6/6)', color: '#ec4899' }
+        ];
+
+        let currentStepIndex = 0;
+        let isDragging = false;
+        let tempStartPoint = null;
+        let savedPoints = { waist: {x:0, y:0}, neck: {x:0, y:0}, head: {x:0, y:0}, knee: {x:0, y:0}, ankle: {x:0, y:0}, shoulder: {x:0, y:0}, elbow1: {x:0, y:0}, elbow2: {x:0, y:0}, wrist1: {x:0, y:0}, wrist2: {x:0, y:0}, fingers: {x:0, y:0} };
+        let committedSvgHtml = '';
+        let tempSvgHtml = '';
+
+        const fileUpload = document.getElementById('file-upload');
+        const fileReupload = document.getElementById('file-reupload');
+        const uploadBox = document.getElementById('upload-box');
+        const imagePreviewContainer = document.getElementById('image-preview-container');
+        const imgBox = document.getElementById('image-preview-box');
+        const previewImage = document.getElementById('preview-image');
+        const instructionOverlay = document.getElementById('instruction-overlay');
+        const instructionText = document.getElementById('instruction-text');
+        const instructionIcon = document.getElementById('instruction-icon');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const skeletonOverlay = document.getElementById('skeleton-overlay');
+        const dynamicSvg = document.getElementById('dynamic-svg');
+        const reuploadBtn = document.getElementById('reupload-btn');
+        const waitingBox = document.getElementById('waiting-box');
+        const analyzingBox = document.getElementById('analyzing-box');
+        const resultsBox = document.getElementById('results-box');
+
+        function renderSvg() { dynamicSvg.innerHTML = committedSvgHtml + tempSvgHtml; }
+        function drawTempMarker(x, y, color) { tempSvgHtml = `<circle cx="${x}%" cy="${y}%" r="3.5" fill="${color}" stroke="white" stroke-width="1.5" />`; renderSvg(); }
+        function drawTempLine(x1, y1, x2, y2, color) {
+            tempSvgHtml = `<line x1="${x1}%" y1="${y1}%" x2="${x2}%" y2="${y2}%" stroke="white" stroke-width="4.5" stroke-linecap="round"/><line x1="${x1}%" y1="${y1}%" x2="${x2}%" y2="${y2}%" stroke="${color}" stroke-width="2.5" stroke-dasharray="4,3" stroke-linecap="round"/><circle cx="${x1}%" cy="${y1}%" r="3.5" fill="${color}" stroke="white" stroke-width="1.5" /><circle cx="${x2}%" cy="${y2}%" r="3.5" fill="${color}" stroke="white" stroke-width="1.5" />`;
+            renderSvg();
+        }
+        function commitPoint(x, y, color) {
+            committedSvgHtml += `<circle cx="${x}%" cy="${y}%" r="15" fill="none" stroke="${color}" stroke-width="2" class="animate-ping" style="animation-iteration-count: 1;" /><circle cx="${x}%" cy="${y}%" r="4" fill="${color}" stroke="white" stroke-width="1.5" />`;
+            renderSvg();
+        }
+        function commitLine(x1, y1, x2, y2, color) {
+            tempSvgHtml = '';
+            committedSvgHtml += `<line x1="${x1}%" y1="${y1}%" x2="${x2}%" y2="${y2}%" stroke="white" stroke-width="5" stroke-linecap="round" opacity="0.8"/><line x1="${x1}%" y1="${y1}%" x2="${x2}%" y2="${y2}%" stroke="${color}" stroke-width="3" stroke-linecap="round" /><circle cx="${x1}%" cy="${y1}%" r="4" fill="${color}" stroke="white" stroke-width="1.5" /><circle cx="${x2}%" cy="${y2}%" r="4" fill="${color}" stroke="white" stroke-width="1.5" />`;
+            renderSvg();
+        }
+
+        function handleFileSelection(event) {
+            const file = event.target.files[0];
+            if (file) {
+                previewImage.src = URL.createObjectURL(file);
+                currentStepIndex = 0;
+                savedPoints = { waist: {x:0, y:0}, neck: {x:0, y:0}, head: {x:0, y:0}, knee: {x:0, y:0}, ankle: {x:0, y:0}, shoulder: {x:0, y:0}, elbow1: {x:0, y:0}, elbow2: {x:0, y:0}, wrist1: {x:0, y:0}, wrist2: {x:0, y:0}, fingers: {x:0, y:0} };
+                committedSvgHtml = ''; tempSvgHtml = ''; renderSvg();
+                
+                uploadBox.classList.add('hidden'); imagePreviewContainer.classList.remove('hidden');
+                instructionOverlay.classList.remove('hidden'); loadingOverlay.classList.add('hidden');
+                reuploadBtn.classList.remove('hidden'); skeletonOverlay.classList.remove('hidden');
+                waitingBox.classList.remove('hidden'); resultsBox.classList.add('hidden'); analyzingBox.classList.add('hidden');
+                updateInstructionUI();
+                
+                document.querySelectorAll('#results-box select').forEach(el => el.value = "0");
+                document.querySelectorAll('#results-box input[type="checkbox"]').forEach(el => el.checked = false);
+                
+                calculateReba(); 
+            }
+        }
+
+        function updateInstructionUI() {
+            instructionText.innerHTML = steps[currentStepIndex].prompt;
+            instructionIcon.style.color = steps[currentStepIndex].color;
+        }
+
+        function getCoords(e) {
+            const rect = imgBox.getBoundingClientRect();
+            return { x: Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100)), y: Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100)) };
+        }
+
+        imgBox.addEventListener('pointerdown', (e) => {
+            if (currentStepIndex >= steps.length) return;
+            e.preventDefault(); const {x, y} = getCoords(e); const step = steps[currentStepIndex];
+            if (step.type === 'click') {
+                if (currentStepIndex === 0) savedPoints.waist = {x, y};
+                commitPoint(x, y, step.color); advanceStep();
+            } else if (step.type === 'drag') {
+                isDragging = true; tempStartPoint = {x, y};
+                if (currentStepIndex === 1) savedPoints.neck = {x, y};
+                if (currentStepIndex === 2) savedPoints.knee = {x, y};
+                if (currentStepIndex === 3) savedPoints.shoulder = {x, y};
+                if (currentStepIndex === 4) savedPoints.elbow2 = {x, y};
+                if (currentStepIndex === 5) savedPoints.wrist2 = {x, y};
+                drawTempMarker(x, y, step.color); imgBox.setPointerCapture(e.pointerId);
+            }
+        });
+
+        imgBox.addEventListener('pointermove', (e) => {
+            if (!isDragging) return; e.preventDefault(); const {x, y} = getCoords(e);
+            drawTempLine(tempStartPoint.x, tempStartPoint.y, x, y, steps[currentStepIndex].color);
+        });
+
+        const endDrag = (e) => {
+            if (!isDragging) return; isDragging = false; imgBox.releasePointerCapture(e.pointerId);
+            const {x, y} = getCoords(e); const dx = x - tempStartPoint.x; const dy = y - tempStartPoint.y;
+            if (Math.sqrt(dx*dx + dy*dy) < 2) { tempSvgHtml = ''; renderSvg(); return; }
+
+            if (currentStepIndex === 1) savedPoints.head = {x, y};
+            if (currentStepIndex === 2) savedPoints.ankle = {x, y};
+            if (currentStepIndex === 3) savedPoints.elbow1 = {x, y};
+            if (currentStepIndex === 4) savedPoints.wrist1 = {x, y};
+            if (currentStepIndex === 5) savedPoints.fingers = {x, y};
+            commitLine(tempStartPoint.x, tempStartPoint.y, x, y, steps[currentStepIndex].color); advanceStep();
+        };
+
+        imgBox.addEventListener('pointerup', endDrag); imgBox.addEventListener('pointercancel', endDrag);
+
+        function advanceStep() {
+            currentStepIndex++;
+            if (currentStepIndex < steps.length) { updateInstructionUI(); } 
+            else {
+                instructionOverlay.classList.add('hidden'); loadingOverlay.classList.remove('hidden');
+                waitingBox.classList.add('hidden'); analyzingBox.classList.remove('hidden');
+                drawSkeletonAndCalculate();
+                setTimeout(() => {
+                    loadingOverlay.classList.add('hidden'); analyzingBox.classList.add('hidden');
+                    resultsBox.classList.remove('hidden');
+                    updateFormResultsByAI();
+                }, 2000);
+            }
+        }
+
+        function getTrueRatio() { const rect = imgBox.getBoundingClientRect(); return rect.width / rect.height; }
+        function calculateTrueAngle(x1, y1, x2, y2, refX, refY) {
+            const ratio = getTrueRatio(); const dx = (x2 - x1) * ratio; const dy = y2 - y1; 
+            const mag = Math.sqrt(dx*dx + dy*dy); if (mag === 0) return 0;
+            return Math.round(Math.acos((dx * refX + dy * refY) / mag) * (180 / Math.PI));
+        }
+        function angleBetweenTrue(v1x, v1y, v2x, v2y) {
+            const ratio = getTrueRatio(); const dx1 = v1x * ratio; const dy1 = v1y; const dx2 = v2x * ratio; const dy2 = v2y;
+            const dot = dx1*dx2 + dy1*dy2; const mag1 = Math.sqrt(dx1*dx1 + dy1*dy1); const mag2 = Math.sqrt(dx2*dx2 + dy2*dy2);
+            if(mag1===0 || mag2===0) return 0;
+            return Math.round(Math.acos(Math.max(-1, Math.min(1, dot / (mag1*mag2)))) * (180 / Math.PI));
+        }
+
+        window.aiAngles = { trunk: 0, neck: 0, leg: 0, upperArm: 0, lowerArm: 0, wrist: 0 };
+
+        function drawSkeletonAndCalculate() {
+            const w = savedPoints.waist, n = savedPoints.neck, h = savedPoints.head, k = savedPoints.knee, a = savedPoints.ankle, s = savedPoints.shoulder, e1 = savedPoints.elbow1, e2 = savedPoints.elbow2, wr1 = savedPoints.wrist1, wr2 = savedPoints.wrist2, f = savedPoints.fingers;
+            
+            aiAngles.trunk = calculateTrueAngle(w.x, w.y, n.x, n.y, 0, -1);
+            aiAngles.neck = angleBetweenTrue(n.x - w.x, n.y - w.y, h.x - n.x, h.y - n.y);
+            aiAngles.leg = angleBetweenTrue(k.x - w.x, k.y - w.y, a.x - k.x, a.y - k.y);
+            aiAngles.upperArm = calculateTrueAngle(s.x, s.y, e1.x, e1.y, 0, 1);
+            aiAngles.lowerArm = angleBetweenTrue(e1.x - s.x, e1.y - s.y, wr1.x - e2.x, wr1.y - e2.y);
+            aiAngles.wrist = angleBetweenTrue(wr1.x - e2.x, wr1.y - e2.y, f.x - wr2.x, f.y - wr2.y);
+
+            committedSvgHtml = `
+                <line x1="${w.x}%" y1="0%" x2="${w.x}%" y2="100%" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6,6" opacity="0.6"/>
+                <line x1="${s.x}%" y1="0%" x2="${s.x}%" y2="100%" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6,6" opacity="0.6"/>
+                <line x1="${n.x}%" y1="${n.y}%" x2="${s.x}%" y2="${s.y}%" stroke="#cbd5e1" stroke-width="3" stroke-dasharray="4,4" />
+                <line x1="${e1.x}%" y1="${e1.y}%" x2="${e2.x}%" y2="${e2.y}%" stroke="#cbd5e1" stroke-width="3" stroke-dasharray="4,4" />
+                <line x1="${wr1.x}%" y1="${wr1.y}%" x2="${wr2.x}%" y2="${wr2.y}%" stroke="#cbd5e1" stroke-width="3" stroke-dasharray="4,4" />
+                
+                <line x1="${w.x}%" y1="${w.y}%" x2="${n.x}%" y2="${n.y}%" stroke="white" stroke-width="5" opacity="0.8"/><line x1="${w.x}%" y1="${w.y}%" x2="${n.x}%" y2="${n.y}%" stroke="${steps[0].color}" stroke-width="3" /><circle cx="${w.x}%" cy="${w.y}%" r="4.5" fill="${steps[0].color}" stroke="white" stroke-width="1.5"/>
+                <line x1="${w.x}%" y1="${w.y}%" x2="${k.x}%" y2="${k.y}%" stroke="white" stroke-width="5" opacity="0.8"/><line x1="${w.x}%" y1="${w.y}%" x2="${k.x}%" y2="${k.y}%" stroke="${steps[2].color}" stroke-width="3" /><circle cx="${k.x}%" cy="${k.y}%" r="4.5" fill="${steps[2].color}" stroke="white" stroke-width="1.5"/>
+                <line x1="${k.x}%" y1="${k.y}%" x2="${a.x}%" y2="${a.y}%" stroke="white" stroke-width="5" opacity="0.8"/><line x1="${k.x}%" y1="${k.y}%" x2="${a.x}%" y2="${a.y}%" stroke="${steps[2].color}" stroke-width="3" /><circle cx="${a.x}%" cy="${a.y}%" r="3" fill="${steps[2].color}" stroke="white" stroke-width="1.5"/>
+                <line x1="${n.x}%" y1="${n.y}%" x2="${h.x}%" y2="${h.y}%" stroke="white" stroke-width="5" opacity="0.8"/><line x1="${n.x}%" y1="${n.y}%" x2="${h.x}%" y2="${h.y}%" stroke="${steps[1].color}" stroke-width="3" /><circle cx="${n.x}%" cy="${n.y}%" r="4.5" fill="${steps[1].color}" stroke="white" stroke-width="1.5"/><circle cx="${h.x}%" cy="${h.y}%" r="3" fill="${steps[1].color}" stroke="white" stroke-width="1.5"/>
+                <line x1="${s.x}%" y1="${s.y}%" x2="${e1.x}%" y2="${e1.y}%" stroke="white" stroke-width="5" opacity="0.8"/><line x1="${s.x}%" y1="${s.y}%" x2="${e1.x}%" y2="${e1.y}%" stroke="${steps[3].color}" stroke-width="3" /><circle cx="${s.x}%" cy="${s.y}%" r="4.5" fill="${steps[3].color}" stroke="white" stroke-width="1.5"/><circle cx="${e1.x}%" cy="${e1.y}%" r="3" fill="${steps[3].color}" stroke="white" stroke-width="1.5"/>
+                <line x1="${e2.x}%" y1="${e2.y}%" x2="${wr1.x}%" y2="${wr1.y}%" stroke="white" stroke-width="5" opacity="0.8"/><line x1="${e2.x}%" y1="${e2.y}%" x2="${wr1.x}%" y2="${wr1.y}%" stroke="${steps[4].color}" stroke-width="3" /><circle cx="${e2.x}%" cy="${e2.y}%" r="4.5" fill="${steps[4].color}" stroke="white" stroke-width="1.5"/><circle cx="${wr1.x}%" cy="${wr1.y}%" r="3" fill="${steps[4].color}" stroke="white" stroke-width="1.5"/>
+                <line x1="${wr2.x}%" y1="${wr2.y}%" x2="${f.x}%" y2="${f.y}%" stroke="white" stroke-width="5" opacity="0.8"/><line x1="${wr2.x}%" y1="${wr2.y}%" x2="${f.x}%" y2="${f.y}%" stroke="${steps[5].color}" stroke-width="3" /><circle cx="${wr2.x}%" cy="${wr2.y}%" r="4.5" fill="${steps[5].color}" stroke="white" stroke-width="1.5"/><circle cx="${f.x}%" cy="${f.y}%" r="3" fill="${steps[5].color}" stroke="white" stroke-width="1.5"/>
+                
+                <text x="${w.x}%" y="${w.y}%" dx="10" dy="-10" fill="${steps[0].color}" font-size="16" font-weight="900" font-family="sans-serif" stroke="white" stroke-width="4" stroke-linejoin="round" paint-order="stroke">Trunk ${aiAngles.trunk}°</text>
+                <text x="${n.x}%" y="${n.y}%" dx="10" dy="-10" fill="${steps[1].color}" font-size="16" font-weight="900" font-family="sans-serif" stroke="white" stroke-width="4" stroke-linejoin="round" paint-order="stroke">Neck ${aiAngles.neck}°</text>
+                <text x="${k.x}%" y="${k.y}%" dx="10" dy="20" fill="${steps[2].color}" font-size="14" font-weight="900" font-family="sans-serif" stroke="white" stroke-width="4" stroke-linejoin="round" paint-order="stroke">Knee ${aiAngles.leg}°</text>
+                <text x="${s.x}%" y="${s.y}%" dx="10" dy="20" fill="${steps[3].color}" font-size="16" font-weight="900" font-family="sans-serif" stroke="white" stroke-width="4" stroke-linejoin="round" paint-order="stroke">Arm ${aiAngles.upperArm}°</text>
+                <text x="${e2.x}%" y="${e2.y}%" dx="10" dy="20" fill="${steps[4].color}" font-size="14" font-weight="900" font-family="sans-serif" stroke="white" stroke-width="4" stroke-linejoin="round" paint-order="stroke">L.Arm ${aiAngles.lowerArm}°</text>
+                <text x="${wr2.x}%" y="${wr2.y}%" dx="10" dy="20" fill="${steps[5].color}" font-size="14" font-weight="900" font-family="sans-serif" stroke="white" stroke-width="4" stroke-linejoin="round" paint-order="stroke">Wrist ${aiAngles.wrist}°</text>
+            `;
+            tempSvgHtml = ''; renderSvg();
+        }
+
+        function updateFormResultsByAI() {
+            const { trunk, neck, leg, upperArm, lowerArm, wrist } = window.aiAngles;
+
+            const selTrunk = document.getElementById('sel-trunk');
+            if (trunk === 0) selTrunk.value = "1";
+            else if (trunk <= 20) selTrunk.value = "2";
+            else if (trunk <= 60) selTrunk.value = "3";
+            else selTrunk.value = "4";
+
+            const selNeck = document.getElementById('sel-neck');
+            if (neck <= 20) selNeck.value = "1";
+            else selNeck.value = "2";
+
+            const selLeg = document.getElementById('sel-leg');
+            selLeg.value = "1"; 
+            document.getElementById('chk-leg-30').checked = (leg > 30 && leg <= 60);
+            document.getElementById('chk-leg-60').checked = (leg > 60);
+
+            const selUpperarm = document.getElementById('sel-ua');
+            if (upperArm <= 20) selUpperarm.value = "1";
+            else if (upperArm <= 45) selUpperarm.value = "2";
+            else if (upperArm <= 90) selUpperarm.value = "3";
+            else selUpperarm.value = "4";
+
+            const selLowerarm = document.getElementById('sel-la');
+            if (lowerArm >= 60 && lowerArm <= 100) selLowerarm.value = "1";
+            else selLowerarm.value = "2";
+
+            const selWrist = document.getElementById('sel-wrist');
+            if (wrist <= 15) selWrist.value = "1";
+            else selWrist.value = "2";
+
+            calculateReba();
+        }
+
+        /* =====================================================================
+           호환성 100% 보장 : JSON 데이터 1차원(Flat) 문자열 치환 구조 
+           ===================================================================== */
+        
+        document.getElementById('btn-save-analysis-img').addEventListener('click', () => {
+            const processName = document.getElementById('process-name').value.trim() || 'REBA';
+            const captureArea = document.getElementById('image-preview-box');
+            
+            html2canvas(captureArea, { useCORS: true, backgroundColor: null }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `${processName}_분석결과사진.jpg`;
+                link.href = canvas.toDataURL('image/jpeg', 0.9);
+                link.click();
+            }).catch(err => {
+                alert("사진 저장 중 오류가 발생했습니다.");
+            });
+        });
+
+        // 캔버스를 이용해 사진을 Base64 문자열로 안전하게 치환
+        function getSafeBase64Image(img) {
+            try {
+                if (!img || !img.src || img.naturalWidth === 0) return "None";
+                const canvas = document.createElement("canvas");
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(img, 0, 0);
+                return canvas.toDataURL("image/jpeg", 0.7); 
+            } catch(e) {
+                return "None";
+            }
+        }
+
+        // C# 외부 프로그램에서 "값은 null일 수 없습니다" 예방을 위한 1차원 Flat Data 매핑
+        document.getElementById('btn-top-json-save').addEventListener('click', () => {
+            if (currentStepIndex < steps.length) {
+                alert("분석(관절 클릭/드래그 6단계)을 모두 마친 후에 데이터를 저장해주세요.");
+                return;
+            }
+            
+            const processName = document.getElementById('process-name').value.trim() || 'REBA';
+
+            // 모든 항목을 어떠한 파서도 읽을 수 있게 1차원 (깊이가 없는) 문자열 쌍으로만 구성합니다.
+            const flatDataToSave = {};
+
+            // 1. 공정 및 사진 정보
+            flatDataToSave["ProcessName"] = processName;
+            flatDataToSave["ImageBase64"] = getSafeBase64Image(previewImage);
+
+            // 2. Table A 폼 데이터
+            flatDataToSave["sel-trunk"] = document.getElementById('sel-trunk').value || "0";
+            flatDataToSave["chk-trunk-twist"] = document.getElementById('chk-trunk-twist').checked ? "true" : "false";
+            flatDataToSave["sel-neck"] = document.getElementById('sel-neck').value || "0";
+            flatDataToSave["chk-neck-twist"] = document.getElementById('chk-neck-twist').checked ? "true" : "false";
+            flatDataToSave["sel-leg"] = document.getElementById('sel-leg').value || "0";
+            flatDataToSave["chk-leg-30"] = document.getElementById('chk-leg-30').checked ? "true" : "false";
+            flatDataToSave["chk-leg-60"] = document.getElementById('chk-leg-60').checked ? "true" : "false";
+
+            // 3. Table B 폼 데이터
+            flatDataToSave["sel-ua"] = document.getElementById('sel-ua').value || "0";
+            flatDataToSave["chk-ua-abduct"] = document.getElementById('chk-ua-abduct').checked ? "true" : "false";
+            flatDataToSave["chk-ua-shoulder"] = document.getElementById('chk-ua-shoulder').checked ? "true" : "false";
+            flatDataToSave["chk-ua-support"] = document.getElementById('chk-ua-support').checked ? "true" : "false";
+            flatDataToSave["sel-la"] = document.getElementById('sel-la').value || "0";
+            flatDataToSave["sel-wrist"] = document.getElementById('sel-wrist').value || "0";
+            flatDataToSave["chk-wrist-twist"] = document.getElementById('chk-wrist-twist').checked ? "true" : "false";
+
+            // 4. 추가 점수 폼 데이터
+            flatDataToSave["sel-weight"] = document.getElementById('sel-weight').value || "0";
+            flatDataToSave["chk-weight-shock"] = document.getElementById('chk-weight-shock').checked ? "true" : "false";
+            flatDataToSave["sel-coupling"] = document.getElementById('sel-coupling').value || "0";
+            flatDataToSave["chk-act-static"] = document.getElementById('chk-act-static').checked ? "true" : "false";
+            flatDataToSave["chk-act-repeat"] = document.getElementById('chk-act-repeat').checked ? "true" : "false";
+            flatDataToSave["chk-act-rapid"] = document.getElementById('chk-act-rapid').checked ? "true" : "false";
+
+            // 5. 최종 결과 패널
+            flatDataToSave["ScoreA"] = document.getElementById('final-score-a').value || "0";
+            flatDataToSave["ScoreB"] = document.getElementById('final-score-b').value || "0";
+            flatDataToSave["ScoreC"] = document.getElementById('final-score-c').value || "0";
+            flatDataToSave["ScoreActivity"] = document.getElementById('final-act').value || "0";
+            flatDataToSave["ScoreREBA"] = document.getElementById('final-reba').value || "0";
+            flatDataToSave["RiskLevel"] = document.getElementById('final-risk').value || "평가 불가";
+            flatDataToSave["ReviewReport"] = document.getElementById('final-review-report').value || "";
+
+            // 6. AI 시각화 데이터 (객체 중첩 금지 - X,Y를 쪼개서 개별 문자열 키로 부여)
+            const pts = ['waist', 'neck', 'head', 'knee', 'ankle', 'shoulder', 'elbow1', 'elbow2', 'wrist1', 'wrist2', 'fingers'];
+            pts.forEach(p => {
+                flatDataToSave[`Point_${p}_x`] = savedPoints[p] ? String(savedPoints[p].x) : "0";
+                flatDataToSave[`Point_${p}_y`] = savedPoints[p] ? String(savedPoints[p].y) : "0";
+            });
+
+            const angs = ['trunk', 'neck', 'leg', 'upperArm', 'lowerArm', 'wrist'];
+            angs.forEach(a => {
+                flatDataToSave[`Angle_${a}`] = window.aiAngles[a] ? String(window.aiAngles[a]) : "0";
+            });
+
+            // JSON 텍스트화 및 저장 처리
+            const jsonString = JSON.stringify(flatDataToSave, null, 2);
+            const blob = new Blob([jsonString], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${processName}_작업분석표.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+        });
+
+        // 3. 1차원 Flat 구조를 역으로 읽어서 대시보드 복원
+        document.getElementById('btn-top-json-upload').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const data = JSON.parse(event.target.result);
+                    
+                    uploadBox.classList.add('hidden'); 
+                    imagePreviewContainer.classList.remove('hidden');
+                    instructionOverlay.classList.add('hidden');
+                    waitingBox.classList.add('hidden');
+                    resultsBox.classList.add('hidden');
+                    skeletonOverlay.classList.add('hidden');
+                    document.getElementById('reupload-btn').classList.add('hidden');
+                    
+                    const analyzingBox = document.getElementById('analyzing-box');
+                    analyzingBox.classList.remove('hidden');
+
+                    document.getElementById('process-name').value = data["ProcessName"] || '';
+                    
+                    previewImage.onload = () => {
+                        // 1차원 데이터에서 좌표/각도 역매핑 복구
+                        const pts = ['waist', 'neck', 'head', 'knee', 'ankle', 'shoulder', 'elbow1', 'elbow2', 'wrist1', 'wrist2', 'fingers'];
+                        pts.forEach(p => {
+                            savedPoints[p] = { 
+                                x: parseFloat(data[`Point_${p}_x`]) || 0, 
+                                y: parseFloat(data[`Point_${p}_y`]) || 0 
+                            };
+                        });
+
+                        const angs = ['trunk', 'neck', 'leg', 'upperArm', 'lowerArm', 'wrist'];
+                        angs.forEach(a => {
+                            window.aiAngles[a] = parseFloat(data[`Angle_${a}`]) || 0;
+                        });
+                        
+                        currentStepIndex = steps.length;
+                        
+                        // 폼 1차원 데이터 역매핑 복구
+                        const selectIds = ['sel-trunk', 'sel-neck', 'sel-leg', 'sel-ua', 'sel-la', 'sel-wrist', 'sel-weight', 'sel-coupling'];
+                        selectIds.forEach(id => { if(data[id]) document.getElementById(id).value = data[id]; });
+
+                        const checkIds = ['chk-trunk-twist', 'chk-neck-twist', 'chk-leg-30', 'chk-leg-60', 'chk-ua-abduct', 'chk-ua-shoulder', 'chk-ua-support', 'chk-wrist-twist', 'chk-weight-shock', 'chk-act-static', 'chk-act-repeat', 'chk-act-rapid'];
+                        checkIds.forEach(id => { if(data[id]) document.getElementById(id).checked = (data[id] === "true"); });
+
+                        drawSkeletonAndCalculate();
+
+                        setTimeout(() => {
+                            analyzingBox.classList.add('hidden');
+                            resultsBox.classList.remove('hidden');
+                            skeletonOverlay.classList.remove('hidden');
+                            document.getElementById('reupload-btn').classList.remove('hidden');
+                            calculateReba();
+                        }, 1200);
+
+                        previewImage.onload = null;
+                        e.target.value = ''; 
+                    };
+
+                    previewImage.src = data["ImageBase64"] === "None" ? "" : (data["ImageBase64"] || "");
+
+                } catch(err) {
+                    alert("호환되지 않거나 손상된 JSON 파일입니다. 데이터 구조를 확인해주세요.");
+                    e.target.value = '';
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        document.getElementById('btn-top-img-upload').addEventListener('change', handleFileSelection);
+        fileUpload.addEventListener('change', handleFileSelection);
+        fileReupload.addEventListener('change', handleFileSelection);
+    </script>
+</body>
+</html>
