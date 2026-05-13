@@ -53,24 +53,39 @@
             <!-- Left Column: Process Info & Upload -->
             <div class="lg:col-span-1 space-y-6">
                 
-                <!-- 공정명 입력란 -->
+                <!-- 공정명 입력란 및 사진 저장 버튼 -->
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                     <h2 class="text-lg font-semibold mb-4 flex items-center">
                         <i data-lucide="clipboard-edit" class="h-5 w-5 mr-2 text-slate-500"></i>
                         공정 정보
                     </h2>
-                    <div>
-                        <label for="process-name" class="block text-sm font-medium text-slate-700 mb-1">공정명 (작업명)</label>
-                        <input type="text" id="process-name" class="w-full border border-slate-300 rounded-lg p-2 outline-none focus:border-blue-500 transition" placeholder="예: 물류창고 상자 적재">
+                    <div class="space-y-4">
+                        <div>
+                            <label for="process-name" class="block text-sm font-medium text-slate-700 mb-1">공정명 (작업명)</label>
+                            <input type="text" id="process-name" class="w-full border border-slate-300 rounded-lg p-2 outline-none focus:border-blue-500 transition" placeholder="예: 물류창고 상자 적재">
+                        </div>
+                        
+                        <!-- 사진 저장 버튼 (공정정보 밑으로 위치 변경) -->
+                        <button id="btn-save-analysis-img" class="w-full px-4 py-2 bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 transition text-sm font-bold flex items-center justify-center shadow-sm rounded-lg">
+                            <i data-lucide="image" class="w-4 h-4 mr-2"></i> REBA 분석사진 저장
+                        </button>
                     </div>
                 </div>
 
                 <!-- Upload Section -->
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <h2 class="text-lg font-semibold mb-4 flex items-center">
-                        <i data-lucide="camera" class="h-5 w-5 mr-2 text-blue-600"></i>
-                        사진 업로드 및 관절 지정
-                    </h2>
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold flex items-center">
+                            <i data-lucide="camera" class="h-5 w-5 mr-2 text-blue-600"></i>
+                            사진 업로드 및 지정
+                        </h2>
+                        <!-- 초기화 / 재업로드 버튼 (사진 밖 영역으로 분리 이동) -->
+                        <label id="reupload-btn" class="bg-slate-100 border border-slate-300 text-slate-700 px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer hover:bg-slate-200 shadow-sm transition flex items-center hidden">
+                            <i data-lucide="upload-cloud" class="w-3.5 h-3.5 mr-1.5"></i>
+                            초기화 / 재업로드
+                            <input type="file" id="file-reupload" class="hidden" accept="image/*" />
+                        </label>
+                    </div>
                     
                     <!-- 처음 업로드 박스 -->
                     <label id="upload-box" class="flex flex-col items-center justify-center w-full h-64 border-2 border-slate-300 border-dashed rounded-lg cursor-pointer bg-slate-50 hover:bg-slate-100 transition">
@@ -92,13 +107,6 @@
                                 <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                                 <p class="mt-4 font-bold text-blue-900 bg-white/90 px-5 py-2 rounded-full shadow-md border border-blue-100">각도 자동 산출 중...</p>
                             </div>
-                            
-                            <!-- 다시 올리기 버튼 -->
-                            <label id="reupload-btn" class="absolute bottom-4 right-4 bg-slate-900/80 text-white px-4 py-2 rounded-lg text-sm cursor-pointer hover:bg-slate-900 shadow-md transition flex items-center hidden z-20">
-                                <i data-lucide="upload-cloud" class="w-4 h-4 mr-2"></i>
-                                초기화 / 재업로드
-                                <input type="file" id="file-reupload" class="hidden" accept="image/*" />
-                            </label>
 
                             <div id="skeleton-overlay" class="absolute inset-0 pointer-events-none hidden">
                                 <svg id="dynamic-svg" style="width: 100%; height: 100%;"></svg>
@@ -138,9 +146,6 @@
                             <i data-lucide="image-plus" class="w-3.5 h-3.5 mr-1.5 text-orange-500"></i> REBA 사진 업로드
                             <input type="file" id="btn-top-img-upload" accept="image/*" class="hidden">
                         </label>
-                        <button id="btn-save-analysis-img" class="px-3 py-1.5 bg-white border border-blue-400 text-blue-700 hover:bg-blue-50 transition text-xs font-bold flex items-center shadow-sm rounded-sm">
-                            <i data-lucide="printer" class="w-3.5 h-3.5 mr-1.5"></i> REBA 분석사진 저장
-                        </button>
                     </div>
                 </div>
 
@@ -412,10 +417,8 @@
             [12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12]
         ];
 
-        // 전역변수 재선언을 통해 ReferenceError: aiAngles is not defined 완전 방어
         window.aiAngles = { trunk: 0, neck: 0, leg: 0, upperArm: 0, lowerArm: 0, wrist: 0 };
 
-        // 점수 합산 및 화면 적용 함수
         function calculateReba() {
             const v = (id) => parseInt(document.getElementById(id).value) || 0;
             const c = (id) => document.getElementById(id).checked ? 1 : 0;
@@ -439,7 +442,6 @@
                 return;
             }
 
-            /* 1. Table A 점수 및 Score A 계산 */
             let trunk = Math.max(1, Math.min(5, trunkBase + c('chk-trunk-twist')));
             let neck = Math.max(1, Math.min(3, neckBase + c('chk-neck-twist')));
             let legMod = c('chk-leg-30') + (c('chk-leg-60') * 2);
@@ -449,7 +451,6 @@
             let weight = v('sel-weight') + c('chk-weight-shock');
             let scoreA = Math.max(1, Math.min(12, tableAScore + weight));
 
-            /* 2. Table B 점수 및 Score B 계산 */
             let uaMod = c('chk-ua-abduct') + c('chk-ua-shoulder') - c('chk-ua-support');
             let ua = Math.max(1, Math.min(6, uaBase + uaMod));
             let la = Math.max(1, Math.min(2, laBase));
@@ -459,14 +460,11 @@
             let coupling = v('sel-coupling');
             let scoreB = Math.max(1, Math.min(12, tableBScore + coupling));
 
-            /* 3. Score C 산출 */
             let scoreC = tableC[scoreA - 1][scoreB - 1];
 
-            /* 4. 행동점수(Activity) 취합 및 최종 REBA Score 산출 */
             let act = c('chk-act-static') + c('chk-act-repeat') + c('chk-act-rapid');
             let finalReba = scoreC + act;
 
-            /* 5. 화면에 계산 결과 출력 */
             let riskText = '';
             let rebaClass = 'border px-2 py-1 w-full outline-none text-center font-bold ';
             
@@ -495,7 +493,6 @@
             document.getElementById('final-risk').value = riskText;
             document.getElementById('final-reba').className = rebaClass;
 
-            /* 6. AI 종합 분석 총평 및 대책 자동 작성 */
             let reviewText = `[AI 관절 각도 분석 결과]\n`;
             reviewText += `- 허리: ${window.aiAngles.trunk}도 굽힘 / 목: ${window.aiAngles.neck}도 굽힘 / 다리(무릎): ${window.aiAngles.leg}도 굽힘\n`;
             reviewText += `- 상완: ${window.aiAngles.upperArm}도 / 전완: ${window.aiAngles.lowerArm}도 / 손목: ${window.aiAngles.wrist}도 꺾임 상태\n\n`;
@@ -670,7 +667,20 @@
             return Math.round(Math.acos(Math.max(-1, Math.min(1, dot / (mag1*mag2)))) * (180 / Math.PI));
         }
 
-        // 라벨 충돌 방지 및 화면 이탈 방지 알고리즘 (Smart Label Positioning)
+        function createSafeLabel(x, y, preferAnchor, prefDy, text, color) {
+            let anchor = preferAnchor;
+            let dx = anchor === 'start' ? 14 : (anchor === 'end' ? -14 : 0);
+            let dy = prefDy;
+
+            if (x < 15) { anchor = 'start'; dx = 14; }
+            else if (x > 85) { anchor = 'end'; dx = -14; }
+
+            if (y < 8) { dy = Math.abs(dy) + 15; }
+            else if (y > 92) { dy = -Math.abs(dy) - 10; }
+
+            return `<text x="${x}%" y="${y}%" dx="${dx}" dy="${dy}" text-anchor="${anchor}" fill="${color}" font-size="16" font-weight="900" font-family="sans-serif" stroke="rgba(255,255,255,0.95)" stroke-width="5" stroke-linejoin="round" paint-order="stroke">${text}</text>`;
+        }
+
         function drawSkeletonAndCalculate() {
             const w = savedPoints.waist, n = savedPoints.neck, h = savedPoints.head, k = savedPoints.knee, a = savedPoints.ankle, s = savedPoints.shoulder, e1 = savedPoints.elbow1, e2 = savedPoints.elbow2, wr1 = savedPoints.wrist1, wr2 = savedPoints.wrist2, f = savedPoints.fingers;
             
@@ -681,47 +691,11 @@
             window.aiAngles.lowerArm = angleBetweenTrue(e1.x - s.x, e1.y - s.y, wr1.x - e2.x, wr1.y - e2.y);
             window.aiAngles.wrist = angleBetweenTrue(wr1.x - e2.x, wr1.y - e2.y, f.x - wr2.x, f.y - wr2.y);
 
-            let labels = [
-                { text: `허리 ${window.aiAngles.trunk}°`, color: steps[0].color, x: w.x, y: w.y + 4 },
-                { text: `목 ${window.aiAngles.neck}°`, color: steps[1].color, x: n.x, y: n.y - 4 },
-                { text: `무릎 ${window.aiAngles.leg}°`, color: steps[2].color, x: k.x, y: k.y + 4 },
-                { text: `상완 ${window.aiAngles.upperArm}°`, color: steps[3].color, x: s.x, y: s.y - 6 },
-                { text: `전완 ${window.aiAngles.lowerArm}°`, color: steps[4].color, x: e2.x, y: e2.y + 6 },
-                { text: `손목 ${window.aiAngles.wrist}°`, color: steps[5].color, x: wr2.x, y: wr2.y + 6 }
-            ];
-
-            // 화면 경계 1차 보정
-            labels.forEach(l => {
-                l.x = Math.max(10, Math.min(90, l.x));
-                l.y = Math.max(5, Math.min(95, l.y));
-            });
-
-            // 겹침 밀어내기 처리 (반복 실행하여 서로 밀어냄)
-            for (let iter = 0; iter < 15; iter++) {
-                for (let i = 0; i < labels.length; i++) {
-                    for (let j = i + 1; j < labels.length; j++) {
-                        let dx = labels[i].x - labels[j].x;
-                        let dy = labels[i].y - labels[j].y;
-                        if (Math.abs(dx) < 16 && Math.abs(dy) < 7) {
-                            let pushY = (7 - Math.abs(dy)) / 2 + 0.5;
-                            if (dy >= 0) { labels[i].y += pushY; labels[j].y -= pushY; }
-                            else { labels[i].y -= pushY; labels[j].y += pushY; }
-                        }
-                    }
-                }
-                // 화면 경계 2차 보정 (위아래 화면 밖으로 밀리지 않도록 고정)
-                labels.forEach(l => {
-                    l.y = Math.max(4, Math.min(96, l.y));
-                });
-            }
-
-            let labelsHtml = labels.map(l => {
-                let anchor = 'middle';
-                // 좌우 끝으로 밀리면 안쪽으로 텍스트 정렬 변경
-                if (l.x < 15) { anchor = 'start'; l.x = 2; }
-                else if (l.x > 85) { anchor = 'end'; l.x = 98; }
-                return `<text x="${l.x}%" y="${l.y}%" text-anchor="${anchor}" fill="${l.color}" font-size="15" font-weight="900" font-family="sans-serif" stroke="rgba(255,255,255,0.95)" stroke-width="4.5" stroke-linejoin="round" paint-order="stroke">${l.text}</text>`;
-            }).join('');
+            let neckDy = -15; let shoulderDy = -20;
+            if (Math.abs(n.y - s.y) < 12 && Math.abs(n.x - s.x) < 20) { neckDy = -25; shoulderDy = 20; }
+            
+            let trunkDy = 10; let elbowDy = 30;
+            if (Math.abs(w.y - e2.y) < 12 && Math.abs(w.x - e2.x) < 20) { trunkDy = -15; elbowDy = 35; }
 
             committedSvgHtml = `
                 <line x1="${w.x}%" y1="0%" x2="${w.x}%" y2="100%" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6,6" opacity="0.6"/>
@@ -738,7 +712,12 @@
                 <line x1="${e2.x}%" y1="${e2.y}%" x2="${wr1.x}%" y2="${wr1.y}%" stroke="white" stroke-width="5" opacity="0.8"/><line x1="${e2.x}%" y1="${e2.y}%" x2="${wr1.x}%" y2="${wr1.y}%" stroke="${steps[4].color}" stroke-width="3" /><circle cx="${e2.x}%" cy="${e2.y}%" r="4.5" fill="${steps[4].color}" stroke="white" stroke-width="1.5"/><circle cx="${wr1.x}%" cy="${wr1.y}%" r="3" fill="${steps[4].color}" stroke="white" stroke-width="1.5"/>
                 <line x1="${wr2.x}%" y1="${wr2.y}%" x2="${f.x}%" y2="${f.y}%" stroke="white" stroke-width="5" opacity="0.8"/><line x1="${wr2.x}%" y1="${wr2.y}%" x2="${f.x}%" y2="${f.y}%" stroke="${steps[5].color}" stroke-width="3" /><circle cx="${wr2.x}%" cy="${wr2.y}%" r="4.5" fill="${steps[5].color}" stroke="white" stroke-width="1.5"/><circle cx="${f.x}%" cy="${f.y}%" r="3" fill="${steps[5].color}" stroke="white" stroke-width="1.5"/>
                 
-                ${labelsHtml}
+                ${createSafeLabel(w.x, w.y, 'end', trunkDy, `허리 ${window.aiAngles.trunk}°`, steps[0].color)}
+                ${createSafeLabel(n.x, n.y, 'start', neckDy, `목 ${window.aiAngles.neck}°`, steps[1].color)}
+                ${createSafeLabel(k.x, k.y, 'start', 25, `무릎 ${window.aiAngles.leg}°`, steps[2].color)}
+                ${createSafeLabel(s.x, s.y, 'end', shoulderDy, `상완 ${window.aiAngles.upperArm}°`, steps[3].color)}
+                ${createSafeLabel(e2.x, e2.y, 'start', elbowDy, `전완 ${window.aiAngles.lowerArm}°`, steps[4].color)}
+                ${createSafeLabel(wr2.x, wr2.y, 'end', 35, `손목 ${window.aiAngles.wrist}°`, steps[5].color)}
             `;
             tempSvgHtml = ''; renderSvg();
         }
