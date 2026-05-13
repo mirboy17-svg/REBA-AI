@@ -18,6 +18,10 @@
         .animate-fade-in {
             animation: fade-in 0.5s ease-out forwards;
         }
+        /* 라벨링 오버레이용 트랜지션 */
+        .label-badge {
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
     </style>
 </head>
 <body class="min-h-screen bg-slate-50 font-sans text-slate-800">
@@ -94,15 +98,19 @@
                             </div>
                             
                             <!-- 다시 올리기 버튼 -->
-                            <label id="reupload-btn" class="absolute bottom-4 right-4 bg-slate-900/80 text-white px-4 py-2 rounded-lg text-sm cursor-pointer hover:bg-slate-900 shadow-md transition flex items-center hidden z-20">
+                            <label id="reupload-btn" class="absolute bottom-4 right-4 bg-slate-900/80 text-white px-4 py-2 rounded-lg text-sm cursor-pointer hover:bg-slate-900 shadow-md transition flex items-center hidden z-30">
                                 <i data-lucide="upload-cloud" class="w-4 h-4 mr-2"></i>
                                 초기화 / 재업로드
                                 <input type="file" id="file-reupload" class="hidden" accept="image/*" />
                             </label>
 
-                            <div id="skeleton-overlay" class="absolute inset-0 pointer-events-none hidden">
+                            <!-- 뼈대 렌더링 영역 -->
+                            <div id="skeleton-overlay" class="absolute inset-0 pointer-events-none hidden z-10">
                                 <svg id="dynamic-svg" style="width: 100%; height: 100%;"></svg>
                             </div>
+
+                            <!-- 전문가용 HTML 라벨 렌더링 영역 (겹침 회피 적용) -->
+                            <div id="labels-overlay" class="absolute inset-0 pointer-events-none hidden z-20"></div>
                         </div>
                     </div>
 
@@ -159,7 +167,7 @@
                 <div id="analyzing-box" class="bg-white rounded-xl shadow-sm border border-slate-200 p-12 h-full flex flex-col items-center justify-center text-center hidden">
                     <div class="animate-pulse flex flex-col items-center">
                         <i data-lucide="calculator" class="h-12 w-12 text-blue-400 mb-4 animate-bounce"></i>
-                        <h3 class="text-xl font-medium text-slate-700">클릭 좌표 기반 관절 각도 및 점수 연산 중...</h3>
+                        <h3 class="text-xl font-medium text-slate-700">스마트 라벨링 및 점수 연산 중...</h3>
                         <div class="w-64 h-2 bg-slate-100 rounded-full mt-6 overflow-hidden">
                             <div class="h-full bg-blue-600 rounded-full animate-[w-full_2s_ease-in-out_infinite]" style="width: 60%"></div>
                         </div>
@@ -412,10 +420,8 @@
             [12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12]
         ];
 
-        // 전역변수 재선언을 통해 ReferenceError: aiAngles is not defined 완전 방어
         window.aiAngles = { trunk: 0, neck: 0, leg: 0, upperArm: 0, lowerArm: 0, wrist: 0 };
 
-        // 점수 합산 및 화면 적용 함수
         function calculateReba() {
             const v = (id) => parseInt(document.getElementById(id).value) || 0;
             const c = (id) => document.getElementById(id).checked ? 1 : 0;
@@ -439,7 +445,6 @@
                 return;
             }
 
-            /* 1. Table A 점수 및 Score A 계산 */
             let trunk = Math.max(1, Math.min(5, trunkBase + c('chk-trunk-twist')));
             let neck = Math.max(1, Math.min(3, neckBase + c('chk-neck-twist')));
             let legMod = c('chk-leg-30') + (c('chk-leg-60') * 2);
@@ -449,7 +454,6 @@
             let weight = v('sel-weight') + c('chk-weight-shock');
             let scoreA = Math.max(1, Math.min(12, tableAScore + weight));
 
-            /* 2. Table B 점수 및 Score B 계산 */
             let uaMod = c('chk-ua-abduct') + c('chk-ua-shoulder') - c('chk-ua-support');
             let ua = Math.max(1, Math.min(6, uaBase + uaMod));
             let la = Math.max(1, Math.min(2, laBase));
@@ -459,14 +463,11 @@
             let coupling = v('sel-coupling');
             let scoreB = Math.max(1, Math.min(12, tableBScore + coupling));
 
-            /* 3. Score C 산출 */
             let scoreC = tableC[scoreA - 1][scoreB - 1];
 
-            /* 4. 행동점수(Activity) 취합 및 최종 REBA Score 산출 */
             let act = c('chk-act-static') + c('chk-act-repeat') + c('chk-act-rapid');
             let finalReba = scoreC + act;
 
-            /* 5. 화면에 계산 결과 출력 */
             let riskText = '';
             let rebaClass = 'border px-2 py-1 w-full outline-none text-center font-bold ';
             
@@ -495,7 +496,6 @@
             document.getElementById('final-risk').value = riskText;
             document.getElementById('final-reba').className = rebaClass;
 
-            /* 6. AI 종합 분석 총평 및 대책 자동 작성 */
             let reviewText = `[AI 관절 각도 분석 결과]\n`;
             reviewText += `- 허리: ${window.aiAngles.trunk}도 굽힘 / 목: ${window.aiAngles.neck}도 굽힘 / 다리(무릎): ${window.aiAngles.leg}도 굽힘\n`;
             reviewText += `- 상완: ${window.aiAngles.upperArm}도 / 전완: ${window.aiAngles.lowerArm}도 / 손목: ${window.aiAngles.wrist}도 꺾임 상태\n\n`;
@@ -552,6 +552,7 @@
         const instructionIcon = document.getElementById('instruction-icon');
         const loadingOverlay = document.getElementById('loading-overlay');
         const skeletonOverlay = document.getElementById('skeleton-overlay');
+        const labelsOverlay = document.getElementById('labels-overlay');
         const dynamicSvg = document.getElementById('dynamic-svg');
         const reuploadBtn = document.getElementById('reupload-btn');
         const waitingBox = document.getElementById('waiting-box');
@@ -581,10 +582,11 @@
                 currentStepIndex = 0;
                 savedPoints = { waist: {x:0, y:0}, neck: {x:0, y:0}, head: {x:0, y:0}, knee: {x:0, y:0}, ankle: {x:0, y:0}, shoulder: {x:0, y:0}, elbow1: {x:0, y:0}, elbow2: {x:0, y:0}, wrist1: {x:0, y:0}, wrist2: {x:0, y:0}, fingers: {x:0, y:0} };
                 committedSvgHtml = ''; tempSvgHtml = ''; renderSvg();
+                labelsOverlay.innerHTML = '';
                 
                 uploadBox.classList.add('hidden'); imagePreviewContainer.classList.remove('hidden');
                 instructionOverlay.classList.remove('hidden'); loadingOverlay.classList.add('hidden');
-                reuploadBtn.classList.remove('hidden'); skeletonOverlay.classList.remove('hidden');
+                reuploadBtn.classList.remove('hidden'); skeletonOverlay.classList.remove('hidden'); labelsOverlay.classList.remove('hidden');
                 waitingBox.classList.remove('hidden'); resultsBox.classList.add('hidden'); analyzingBox.classList.add('hidden');
                 updateInstructionUI();
                 
@@ -670,7 +672,7 @@
             return Math.round(Math.acos(Math.max(-1, Math.min(1, dot / (mag1*mag2)))) * (180 / Math.PI));
         }
 
-        // 라벨 충돌 방지 및 화면 이탈 방지 알고리즘 (Smart Label Positioning)
+        // 라벨 겹침 방지 및 전문가 뷰 알고리즘 (HTML Badge Overlay & SVG Leader Lines)
         function drawSkeletonAndCalculate() {
             const w = savedPoints.waist, n = savedPoints.neck, h = savedPoints.head, k = savedPoints.knee, a = savedPoints.ankle, s = savedPoints.shoulder, e1 = savedPoints.elbow1, e2 = savedPoints.elbow2, wr1 = savedPoints.wrist1, wr2 = savedPoints.wrist2, f = savedPoints.fingers;
             
@@ -681,48 +683,57 @@
             window.aiAngles.lowerArm = angleBetweenTrue(e1.x - s.x, e1.y - s.y, wr1.x - e2.x, wr1.y - e2.y);
             window.aiAngles.wrist = angleBetweenTrue(wr1.x - e2.x, wr1.y - e2.y, f.x - wr2.x, f.y - wr2.y);
 
-            let labels = [
-                { text: `허리 ${window.aiAngles.trunk}°`, color: steps[0].color, x: w.x, y: w.y + 4 },
-                { text: `목 ${window.aiAngles.neck}°`, color: steps[1].color, x: n.x, y: n.y - 4 },
-                { text: `무릎 ${window.aiAngles.leg}°`, color: steps[2].color, x: k.x, y: k.y + 4 },
-                { text: `상완 ${window.aiAngles.upperArm}°`, color: steps[3].color, x: s.x, y: s.y - 6 },
-                { text: `전완 ${window.aiAngles.lowerArm}°`, color: steps[4].color, x: e2.x, y: e2.y + 6 },
-                { text: `손목 ${window.aiAngles.wrist}°`, color: steps[5].color, x: wr2.x, y: wr2.y + 6 }
+            // 라벨 포지셔닝 기본 셋팅 (초기 오프셋)
+            let labelsData = [
+                { id: 'trunk', text: `허리 ${window.aiAngles.trunk}°`, color: steps[0].color, jx: w.x, jy: w.y, x: w.x - 12, y: w.y + 10 },
+                { id: 'neck', text: `목 ${window.aiAngles.neck}°`, color: steps[1].color, jx: n.x, jy: n.y, x: n.x + 12, y: n.y - 10 },
+                { id: 'leg', text: `무릎 ${window.aiAngles.leg}°`, color: steps[2].color, jx: k.x, jy: k.y, x: k.x - 12, y: k.y + 10 },
+                { id: 'upperArm', text: `상완 ${window.aiAngles.upperArm}°`, color: steps[3].color, jx: s.x, jy: s.y, x: s.x + 15, y: s.y - 5 },
+                { id: 'lowerArm', text: `전완 ${window.aiAngles.lowerArm}°`, color: steps[4].color, jx: e2.x, jy: e2.y, x: e2.x + 15, y: e2.y + 5 },
+                { id: 'wrist', text: `손목 ${window.aiAngles.wrist}°`, color: steps[5].color, jx: wr2.x, jy: wr2.y, x: wr2.x + 12, y: wr2.y + 10 }
             ];
 
-            // 화면 경계 1차 보정
-            labels.forEach(l => {
-                l.x = Math.max(10, Math.min(90, l.x));
-                l.y = Math.max(5, Math.min(95, l.y));
-            });
-
-            // 겹침 밀어내기 처리 (반복 실행하여 서로 밀어냄)
-            for (let iter = 0; iter < 15; iter++) {
-                for (let i = 0; i < labels.length; i++) {
-                    for (let j = i + 1; j < labels.length; j++) {
-                        let dx = labels[i].x - labels[j].x;
-                        let dy = labels[i].y - labels[j].y;
-                        if (Math.abs(dx) < 16 && Math.abs(dy) < 7) {
-                            let pushY = (7 - Math.abs(dy)) / 2 + 0.5;
-                            if (dy >= 0) { labels[i].y += pushY; labels[j].y -= pushY; }
-                            else { labels[i].y -= pushY; labels[j].y += pushY; }
+            // 1. 물리 시뮬레이션: 라벨간 겹침 방지 (서로 밀어내기)
+            const MIN_DIST = 16; // 밀어내는 최소 거리(%)
+            for (let iter = 0; iter < 30; iter++) {
+                for (let i = 0; i < labelsData.length; i++) {
+                    for (let j = i + 1; j < labelsData.length; j++) {
+                        let dx = labelsData[i].x - labelsData[j].x;
+                        let dy = labelsData[i].y - labelsData[j].y;
+                        let dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < MIN_DIST && dist > 0.001) {
+                            let force = (MIN_DIST - dist) / 2;
+                            labelsData[i].x += (dx / dist) * force;
+                            labelsData[i].y += (dy / dist) * force;
+                            labelsData[j].x -= (dx / dist) * force;
+                            labelsData[j].y -= (dy / dist) * force;
                         }
                     }
                 }
-                // 화면 경계 2차 보정 (위아래 화면 밖으로 밀리지 않도록 고정)
-                labels.forEach(l => {
-                    l.y = Math.max(4, Math.min(96, l.y));
+                // 2. 화면 이탈 방지 (안전한 경계선 내로 고정 Clamping)
+                labelsData.forEach(l => {
+                    l.x = Math.max(10, Math.min(90, l.x));
+                    l.y = Math.max(6, Math.min(94, l.y));
                 });
             }
 
-            let labelsHtml = labels.map(l => {
-                let anchor = 'middle';
-                // 좌우 끝으로 밀리면 안쪽으로 텍스트 정렬 변경
-                if (l.x < 15) { anchor = 'start'; l.x = 2; }
-                else if (l.x > 85) { anchor = 'end'; l.x = 98; }
-                return `<text x="${l.x}%" y="${l.y}%" text-anchor="${anchor}" fill="${l.color}" font-size="15" font-weight="900" font-family="sans-serif" stroke="rgba(255,255,255,0.95)" stroke-width="4.5" stroke-linejoin="round" paint-order="stroke">${l.text}</text>`;
-            }).join('');
+            // 3. 리더선 (관절과 라벨을 잇는 얇은 점선) 생성
+            let leaderLinesHtml = labelsData.map(l => 
+                `<line x1="${l.jx}%" y1="${l.jy}%" x2="${l.x}%" y2="${l.y}%" stroke="${l.color}" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.9"/>
+                 <circle cx="${l.jx}%" cy="${l.jy}%" r="3" fill="${l.color}" stroke="white" stroke-width="1.5"/>`
+            ).join('');
 
+            // 4. 모던 UI HTML 뱃지 렌더링
+            let htmlBadges = labelsData.map(l => 
+                `<div class="label-badge absolute flex items-center justify-center px-2.5 py-1 bg-slate-900/90 text-white rounded-md shadow-lg border border-slate-600 backdrop-blur-sm transform -translate-x-1/2 -translate-y-1/2 whitespace-nowrap" style="left: ${l.x}%; top: ${l.y}%; z-index: 30;">
+                    <span class="w-2.5 h-2.5 rounded-full mr-1.5 border border-white/40" style="background-color: ${l.color}"></span>
+                    <span class="text-xs font-bold tracking-wide">${l.text}</span>
+                </div>`
+            ).join('');
+
+            labelsOverlay.innerHTML = htmlBadges;
+
+            // 기존 뼈대 렌더링에 리더선 추가
             committedSvgHtml = `
                 <line x1="${w.x}%" y1="0%" x2="${w.x}%" y2="100%" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6,6" opacity="0.6"/>
                 <line x1="${s.x}%" y1="0%" x2="${s.x}%" y2="100%" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6,6" opacity="0.6"/>
@@ -730,15 +741,16 @@
                 <line x1="${e1.x}%" y1="${e1.y}%" x2="${e2.x}%" y2="${e2.y}%" stroke="#cbd5e1" stroke-width="3" stroke-dasharray="4,4" />
                 <line x1="${wr1.x}%" y1="${wr1.y}%" x2="${wr2.x}%" y2="${wr2.y}%" stroke="#cbd5e1" stroke-width="3" stroke-dasharray="4,4" />
                 
-                <line x1="${w.x}%" y1="${w.y}%" x2="${n.x}%" y2="${n.y}%" stroke="white" stroke-width="5" opacity="0.8"/><line x1="${w.x}%" y1="${w.y}%" x2="${n.x}%" y2="${n.y}%" stroke="${steps[0].color}" stroke-width="3" /><circle cx="${w.x}%" cy="${w.y}%" r="4.5" fill="${steps[0].color}" stroke="white" stroke-width="1.5"/>
-                <line x1="${w.x}%" y1="${w.y}%" x2="${k.x}%" y2="${k.y}%" stroke="white" stroke-width="5" opacity="0.8"/><line x1="${w.x}%" y1="${w.y}%" x2="${k.x}%" y2="${k.y}%" stroke="${steps[2].color}" stroke-width="3" /><circle cx="${k.x}%" cy="${k.y}%" r="4.5" fill="${steps[2].color}" stroke="white" stroke-width="1.5"/>
-                <line x1="${k.x}%" y1="${k.y}%" x2="${a.x}%" y2="${a.y}%" stroke="white" stroke-width="5" opacity="0.8"/><line x1="${k.x}%" y1="${k.y}%" x2="${a.x}%" y2="${a.y}%" stroke="${steps[2].color}" stroke-width="3" /><circle cx="${a.x}%" cy="${a.y}%" r="3" fill="${steps[2].color}" stroke="white" stroke-width="1.5"/>
-                <line x1="${n.x}%" y1="${n.y}%" x2="${h.x}%" y2="${h.y}%" stroke="white" stroke-width="5" opacity="0.8"/><line x1="${n.x}%" y1="${n.y}%" x2="${h.x}%" y2="${h.y}%" stroke="${steps[1].color}" stroke-width="3" /><circle cx="${n.x}%" cy="${n.y}%" r="4.5" fill="${steps[1].color}" stroke="white" stroke-width="1.5"/><circle cx="${h.x}%" cy="${h.y}%" r="3" fill="${steps[1].color}" stroke="white" stroke-width="1.5"/>
-                <line x1="${s.x}%" y1="${s.y}%" x2="${e1.x}%" y2="${e1.y}%" stroke="white" stroke-width="5" opacity="0.8"/><line x1="${s.x}%" y1="${s.y}%" x2="${e1.x}%" y2="${e1.y}%" stroke="${steps[3].color}" stroke-width="3" /><circle cx="${s.x}%" cy="${s.y}%" r="4.5" fill="${steps[3].color}" stroke="white" stroke-width="1.5"/><circle cx="${e1.x}%" cy="${e1.y}%" r="3" fill="${steps[3].color}" stroke="white" stroke-width="1.5"/>
-                <line x1="${e2.x}%" y1="${e2.y}%" x2="${wr1.x}%" y2="${wr1.y}%" stroke="white" stroke-width="5" opacity="0.8"/><line x1="${e2.x}%" y1="${e2.y}%" x2="${wr1.x}%" y2="${wr1.y}%" stroke="${steps[4].color}" stroke-width="3" /><circle cx="${e2.x}%" cy="${e2.y}%" r="4.5" fill="${steps[4].color}" stroke="white" stroke-width="1.5"/><circle cx="${wr1.x}%" cy="${wr1.y}%" r="3" fill="${steps[4].color}" stroke="white" stroke-width="1.5"/>
-                <line x1="${wr2.x}%" y1="${wr2.y}%" x2="${f.x}%" y2="${f.y}%" stroke="white" stroke-width="5" opacity="0.8"/><line x1="${wr2.x}%" y1="${wr2.y}%" x2="${f.x}%" y2="${f.y}%" stroke="${steps[5].color}" stroke-width="3" /><circle cx="${wr2.x}%" cy="${wr2.y}%" r="4.5" fill="${steps[5].color}" stroke="white" stroke-width="1.5"/><circle cx="${f.x}%" cy="${f.y}%" r="3" fill="${steps[5].color}" stroke="white" stroke-width="1.5"/>
+                <line x1="${w.x}%" y1="${w.y}%" x2="${n.x}%" y2="${n.y}%" stroke="white" stroke-width="5" opacity="0.8"/><line x1="${w.x}%" y1="${w.y}%" x2="${n.x}%" y2="${n.y}%" stroke="${steps[0].color}" stroke-width="3" />
+                <line x1="${w.x}%" y1="${w.y}%" x2="${k.x}%" y2="${k.y}%" stroke="white" stroke-width="5" opacity="0.8"/><line x1="${w.x}%" y1="${w.y}%" x2="${k.x}%" y2="${k.y}%" stroke="${steps[2].color}" stroke-width="3" />
+                <line x1="${k.x}%" y1="${k.y}%" x2="${a.x}%" y2="${a.y}%" stroke="white" stroke-width="5" opacity="0.8"/><line x1="${k.x}%" y1="${k.y}%" x2="${a.x}%" y2="${a.y}%" stroke="${steps[2].color}" stroke-width="3" />
+                <line x1="${n.x}%" y1="${n.y}%" x2="${h.x}%" y2="${h.y}%" stroke="white" stroke-width="5" opacity="0.8"/><line x1="${n.x}%" y1="${n.y}%" x2="${h.x}%" y2="${h.y}%" stroke="${steps[1].color}" stroke-width="3" />
+                <line x1="${s.x}%" y1="${s.y}%" x2="${e1.x}%" y2="${e1.y}%" stroke="white" stroke-width="5" opacity="0.8"/><line x1="${s.x}%" y1="${s.y}%" x2="${e1.x}%" y2="${e1.y}%" stroke="${steps[3].color}" stroke-width="3" />
+                <line x1="${e2.x}%" y1="${e2.y}%" x2="${wr1.x}%" y2="${wr1.y}%" stroke="white" stroke-width="5" opacity="0.8"/><line x1="${e2.x}%" y1="${e2.y}%" x2="${wr1.x}%" y2="${wr1.y}%" stroke="${steps[4].color}" stroke-width="3" />
+                <line x1="${wr2.x}%" y1="${wr2.y}%" x2="${f.x}%" y2="${f.y}%" stroke="white" stroke-width="5" opacity="0.8"/><line x1="${wr2.x}%" y1="${wr2.y}%" x2="${f.x}%" y2="${f.y}%" stroke="${steps[5].color}" stroke-width="3" />
                 
-                ${labelsHtml}
+                <!-- 리더선 추가 -->
+                ${leaderLinesHtml}
             `;
             tempSvgHtml = ''; renderSvg();
         }
@@ -890,6 +902,7 @@
                     waitingBox.classList.add('hidden');
                     resultsBox.classList.add('hidden');
                     skeletonOverlay.classList.add('hidden');
+                    labelsOverlay.classList.add('hidden');
                     document.getElementById('reupload-btn').classList.add('hidden');
                     
                     const analyzingBox = document.getElementById('analyzing-box');
@@ -925,6 +938,7 @@
                             analyzingBox.classList.add('hidden');
                             resultsBox.classList.remove('hidden');
                             skeletonOverlay.classList.remove('hidden');
+                            labelsOverlay.classList.remove('hidden');
                             document.getElementById('reupload-btn').classList.remove('hidden');
                             calculateReba();
                         }, 1200);
