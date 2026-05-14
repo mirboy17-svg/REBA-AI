@@ -493,11 +493,12 @@
             document.getElementById('final-risk').value = riskText;
             document.getElementById('final-reba').className = rebaClass;
 
-            let reviewText = `[AI 관절 각도 분석 결과]\n`;
+            /* 6. AI 종합 분석 총평 및 대책 자동 작성 */
+            let reviewText = `○ AI 관절 각도 분석 결과\n\n`;
             reviewText += `- 허리: ${window.aiAngles.trunk}도 굽힘 / 목: ${window.aiAngles.neck}도 굽힘 / 다리(무릎): ${window.aiAngles.leg}도 굽힘\n`;
             reviewText += `- 상완: ${window.aiAngles.upperArm}도 / 전완: ${window.aiAngles.lowerArm}도 / 손목: ${window.aiAngles.wrist}도 꺾임 상태\n\n`;
 
-            reviewText += `[개선 대책]\n`;
+            reviewText += `○ 개선 대책\n`;
             if (finalReba >= 8) {
                 reviewText += `- 공학적 대책: 중량물 취급 보조설비(호이스트, 리프트, 밸런서 등) 즉각 도입, 작업자 체형에 맞는 높이 조절형 작업대 설치 및 레이아웃 전면 개조 필요.\n`;
                 reviewText += `- 관리적 대책: 즉각적인 근골격계 유해요인 정밀조사 실시, 작업 교대주기 단축 및 추가 휴식시간 배정, 전문적인 인간공학적 작업자세 교육 의무화.`;
